@@ -1,0 +1,40 @@
+name: Sync Upstream & Re-apply Customizations
+
+on:
+  schedule:
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync-and-patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch Upstream
+        run: |
+          git remote add upstream https://github.com/eooce/sing-box.git || true
+          git fetch upstream main
+
+      - name: Merge Upstream & Re-apply Patches
+        run: |
+          python3 .github/scripts/reapply_patches.py
+
+      - name: Commit and Push if Changed
+        run: |
+          if git status --porcelain | grep -q 'sing-box.sh'; then
+            git add sing-box.sh
+            git commit -m "chore(sync): 自动同步上游更新并重新应用专属优化"
+            git push origin main
+            echo "Sync and patch completed successfully!"
+          else
+            echo "No changes needed."
+          fi
