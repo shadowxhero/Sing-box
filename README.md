@@ -1,6 +1,6 @@
 <div align="center">
 
-# sing-box多协议代理工具
+# sing-box 双协议极简优化版 (VLESS-Reality + VMess-Argo)
 
 ![Debian](https://img.shields.io/badge/Debian-A81D33?logo=debian&logoColor=white)
 ![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?logo=ubuntu&logoColor=white)
@@ -11,7 +11,7 @@
 [![PyPI](https://img.shields.io/badge/PyPI-3775A9?logo=pypi&logoColor=white)](https://pypi.org/project/singbox)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?&logo=docker&logoColor=white)](https://hub.docker.com/r/eooce/sbx)
 
-sing-box是一个强大的代理脚本，多种环境下使用。它支持多种代理协议（VLESS-reality-verison、VMess-ws-tls(tunnel)、Hysteria2、Tuic），并集成了哪吒(v0/v1)探针功能。
+sing-box是一个强大的代理脚本，多种环境下使用。专注于极致轻量与高可用双保险。默认精简剥离了高阻断、高内存消耗的 UDP/QUIC 协议（Hysteria2/Tuic），仅保留 **VLESS-Reality（极速低延迟直连）** 与 **VMess-Argo（全天候备用救砖）** 双协议。同时原生修复 Nginx 订阅 404 Bug、规范节点唯一命名后缀并注入了自动化域名守护服务。
 
 ---
 
@@ -22,17 +22,17 @@ Telegram交流反馈群组：https://t.me/eooceu
 
 # 1：vps一键命令，已集成到ssh工具箱中
 * 注意nat小鸡安装完一键脚本之后需手动更改订阅端口和节点端口在允许范围内的端口，否则节点不通
-* 可在脚本前添加PORT变量，随脚本一起运行，即可定义端口，需确保PORT端口后面的3个端口可用，否则节点不通
+* 可在脚本前添加PORT变量，随脚本一起运行，即可定义端口，需确保PORT端口后面的1个端口可用(用于Nginx订阅)
 * 可选环境变量PORT CFIP CFPORT
 
-## VPS一键四协议安装脚本
+## VPS一键双协议安装脚本
 ```
-bash <(curl -Ls https://raw.githubusercontent.com/eooce/sing-box/main/sing-box.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/shadowxhero/Sing-box/main/sing-box.sh)
 ```
 ## vps带端口变量运行示列(NAT机)
 PORT=开放的端口 确保后面有3个端口可用
 ```
-PORT=你的端口 bash <(curl -Ls https://raw.githubusercontent.com/eooce/sing-box/main/sing-box.sh)
+PORT=你的端口 bash <(curl -Ls https://raw.githubusercontent.com/shadowxhero/Sing-box/main/sing-box.sh)
 ```
 
 
