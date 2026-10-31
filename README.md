@@ -1,6 +1,6 @@
 <div align="center">
 
-# sing-box 双协议极简优化版 (VLESS-Reality + VMess-Argo)
+# sing-box 双协议极简优化版
 
 ![Debian](https://img.shields.io/badge/Debian-A81D33?logo=debian&logoColor=white)
 ![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?logo=ubuntu&logoColor=white)
@@ -14,7 +14,7 @@
 sing-box是一个强大的代理脚本，多种环境下使用。专注于极致轻量与高可用双保险。
 
 ### 🌟 专属优化特性：
-* **精简双协议**：默认剥离易被墙、高内存消耗的 UDP/QUIC 协议（Hysteria2/Tuic），仅保留 **VLESS-Reality（极速低延迟直连）** 与 **VMess-Argo（全天候备用救砖）** 双协议。
+* **精简双协议**：默认剥离易被墙、高内存消耗的 UDP/QUIC 协议（Hysteria2/Tuic），仅保留 **VLESS-Reality** 与 **VMess-Argo** 双协议。
 * **Go 运行时内存硬锁**：原生注入 `GOMEMLIMIT=48MiB` 与 `GOGC=30`，抑制 Go 堆内存无节制膨胀，彻底避免 128MB / 96MB 小内存 VPS 在高并发下载时被宿主机内核 OOM Kill。
 * **进程存活自愈保活**：后台守护服务实时检测 `sing-box` 进程状态，异常退出时自动拉起并清理残余 pid 锁，杜绝假死。
 * **Argo 动态域名自动同步**：临时隧道重启换新随机域名后，后台守护自动捕捉并写入订阅文件，同时死死焊住 `-Argo` 唯一命名。
@@ -54,11 +54,11 @@ bash <(curl -Ls ssh_tool.eooce.com)
 ```
 用法: [sb或脚本] [参数], 示例: sb -c(查看节点信息)
 
-  -i  --install     无交互安装sing-box
-  -c  --check       查看节点信息和订阅链接
-  -r  --restart     重新获取argo临时隧道并更新到订阅
-  -u  --uninstall   无交互卸载sing-box（含 nginx)
-  -h  --help        显示此帮助信息
+ -i --install   无交互安装sing-box
+ -c --check    查看节点信息和订阅链接
+ -r --restart   重新获取argo临时隧道并更新到订阅
+ -u --uninstall  无交互卸载sing-box（含 nginx)
+ -h --help    显示此帮助信息
 ```
 
 # 2：Serv00|CT8一键安装脚本,集成哪吒探针,全自动安装
@@ -66,7 +66,7 @@ bash <(curl -Ls ssh_tool.eooce.com)
 * 一键四协议安装脚本，vmess-ws|vmess-ws-tls(argo)|hy2|tuic5默认解锁GPT和奈飞
 * 支持自定义哪吒参数、Argo等参数随脚本一起运行
 * 列如：UUID=123456 ARGO_DOMAIN=2go.admin.com ARGO_AUTH=abc123 UPLOAD_URL=https://merge.serv00.net
-* v0哪吒变量形式:NEZHA_SERVER=nezha.abc.com  v1哪吒变量形式:NEZHA_SERVER=nezha.abc.com:8008,v1不需要NEZHA_PORT变量
+* v0哪吒变量形式:NEZHA_SERVER=nezha.abc.com v1哪吒变量形式:NEZHA_SERVER=nezha.abc.com:8008,v1不需要NEZHA_PORT变量
 * 需要订阅自动上传到汇聚订阅器，需先部署Merge-sub项目，部署时填写UPLOAD_URL环境变量为部署的首页地址,例如：UPLOAD_URL=https://merge.serv00.net
 * 客户端跳过证书验证需设置为true，否则hy2和tuic不通
 
@@ -79,9 +79,9 @@ bash <(curl -Ls https://raw.githubusercontent.com/eooce/sing-box/main/sb_serv00.
 ## Serv00|CT8一键四协议无交互安装脚本vmess-ws|vmess-ws-tls(argo)|hy2|tuic5，全自动安装节点+全自动保活
 * 默认不安装哪吒和TG提醒，如需要，在脚本前添加环境变量随脚本一起运行即可
 * 可选环境变量：CHAT_ID BOT_TOKEN UUID NEZHA_SERVER NEZHA_PORT NEZHA_KEY ARGO_DOMAIN ARGO_AUTH CFIP CFPORT SUB_TOKEN
-* v0哪吒变量形式:NEZHA_SERVER=nezha.abc.com  v1哪吒变量形式:NEZHA_SERVER=nezha.abc.com:8008,v1不需要NEZHA_PORT变量
+* v0哪吒变量形式:NEZHA_SERVER=nezha.abc.com v1哪吒变量形式:NEZHA_SERVER=nezha.abc.com:8008,v1不需要NEZHA_PORT变量
 * 需要订阅自动上传到汇聚订阅器，需先部署Merge-sub项目，部署时填写UPLOAD_URL环境变量为部署的首页地址,例如：UPLOAD_URL=https://merge.serv00.net
-* ARGO_AUTH变量使用json时，ARGO_AUTH=‘json’  需用英文输入状态下的单引号包裹，例如：ARGO_AUTH='{"AccountTag":"123","TunnelSecret":"123","TunnelID":"123"}' 
+* ARGO_AUTH变量使用json时，ARGO_AUTH=‘json’ 需用英文输入状态下的单引号包裹，例如：ARGO_AUTH='{"AccountTag":"123","TunnelSecret":"123","TunnelID":"123"}' 
 ```
 bash <(curl -Ls https://raw.githubusercontent.com/eooce/sing-box/main/sb4.sh)
 ```
@@ -100,7 +100,7 @@ bash <(curl -Ls https://raw.githubusercontent.com/eooce/sing-box/test/sb_00.sh)
 ## Serv00|CT8 hysteria2无交互一键安装脚本
 * 复制脚本回车全自动安装节点+全自动保活
 * 默认不安装哪吒和TG提醒，如需要，在脚本前添加环境变量随脚本一起运行即可,v1不需要NEZHA_PORT变量
-* v0哪吒变量形式:NEZHA_SERVER=nezha.abc.com  v1哪吒变量形式:NEZHA_SERVER=nezha.abc.com:8008
+* v0哪吒变量形式:NEZHA_SERVER=nezha.abc.com v1哪吒变量形式:NEZHA_SERVER=nezha.abc.com:8008
 * 可选变量：CHAT_ID BOT_TOKEN UUID NEZHA_SERVER NEZHA_PORT NEZHA_KEY SUB_TOKEN
 ```
 bash <(curl -Ls https://github.com/eooce/Sing-box/releases/download/00/2.sh)
@@ -109,7 +109,7 @@ bash <(curl -Ls https://github.com/eooce/Sing-box/releases/download/00/2.sh)
 ## Serv00|CT8 tuic无交互一键安装脚本
 * 复制脚本回车全自动安装节点+全自动保活
 * 默认不安装哪吒和TG提醒，如需要，在脚本前添加环境变量随脚本一起运行即可,v1不需要NEZHA_PORT变量
-* v0哪吒变量形式:NEZHA_SERVER=nezha.abc.com  v1哪吒变量形式:NEZHA_SERVER=nezha.abc.com:8008
+* v0哪吒变量形式:NEZHA_SERVER=nezha.abc.com v1哪吒变量形式:NEZHA_SERVER=nezha.abc.com:8008
 * 可选变量：CHAT_ID BOT_TOKEN UUID NEZHA_SERVER NEZHA_PORT NEZHA_KEY SUB_TOKEN
 
 ```
@@ -119,7 +119,7 @@ bash <(curl -Ls https://github.com/eooce/Sing-box/releases/download/00/tu.sh)
 ## Serv00|CT8 vmess-ws-tls(argo)一键脚本
 * 复制脚本回车全自动安装节点+全自动保活
 * 默认不安装哪吒和TG提醒，如需要，在脚本前添加环境变量随脚本一起运行即可,v1不需要NEZHA_PORT变量
-* v0哪吒变量形式:NEZHA_SERVER=nezha.abc.com  v1哪吒变量形式:NEZHA_SERVER=nezha.abc.com:8008
+* v0哪吒变量形式:NEZHA_SERVER=nezha.abc.com v1哪吒变量形式:NEZHA_SERVER=nezha.abc.com:8008
 * 可选变量：CHAT_ID BOT_TOKEN UUID ARGO_DOMAIN ARGO_AUTH NEZHA_SERVER NEZHA_PORT NEZHA_KEY CFIP CFPORT SUB_TOKEN 
 
 ```
@@ -138,21 +138,21 @@ bash <(curl -Ls https://github.com/eooce/Sing-box/releases/download/00/00_vm.sh)
 * 无需设置NEZHA_TLS,当哪吒端口为{443,8443,2096,2087,2083,2053}其中之一时，自动开启tls
 
 ## 游戏机hosting可选变量
-  | 变量名        | 是否必须 | 默认值 | 备注 |
-  | ------------ | ------ | ------ | ------ |
-  | PORT         | 否 |  3000  |http订阅端口，对应的主运行文件中修改，列如：index.js,app.py中 |
-  | ARGO_PORT    | 否 |  8001  |argo隧道端口，固定隧道token需和cloudflare后台设置的一致      |
-  | UUID         | 否 | bc97f674-c578-4940-9234-0a1da46041b9|节点UUID和哪吒v1的UUID      |
-  | NEZHA_SERVER | 否 |        | 哪吒服务端域名，v0:nz.aaa.com  v1: nz.aaa.com:8008       |
-  | NEZHA_PORT   | 否 |  5555  | 哪吒端口为{443,8443,2096,2087,2083,2053}其中之一时，开启tls|
-  | NEZHA_KEY    | 否 |        | 哪吒客户端KEY 或v1的NZ_CLIENT_SECRET                     |
-  | ARGO_DOMAIN  | 否 |        | argo固定隧道域名，留空即启用临时隧道                        |
-  | ARGO_AUTH    | 否 |        | argo固定隧道json或token，留空即启用临时隧道                 |
-  | CFIP         | 否 |skk.moe | 节点优选域名或ip                                         |
-  | CFPORT       | 否 |  8443  |节点端口                                                 |
-  | HY2_PORT     | 否 |        | hy2端口,支持多端口的玩具可以填写，不填写该节点不通             |
-  | REALITY_PORT | 否 |        | vless-reality端口，支持多端口的玩具可以填写，不填写该节点不通   |
-  | TUIC_PORT    | 否 |        | tuic-v5端口，支持多端口的玩具可以填写，不填写该节点不通         |
+ | 变量名    | 是否必须 | 默认值 | 备注 |
+ | ------------ | ------ | ------ | ------ |
+ | PORT     | 否 | 3000 |http订阅端口，对应的主运行文件中修改，列如：index.js,app.py中 |
+ | ARGO_PORT  | 否 | 8001 |argo隧道端口，固定隧道token需和cloudflare后台设置的一致   |
+ | UUID     | 否 | bc97f674-c578-4940-9234-0a1da46041b9|节点UUID和哪吒v1的UUID   |
+ | NEZHA_SERVER | 否 |    | 哪吒服务端域名，v0:nz.aaa.com v1: nz.aaa.com:8008    |
+ | NEZHA_PORT  | 否 | 5555 | 哪吒端口为{443,8443,2096,2087,2083,2053}其中之一时，开启tls|
+ | NEZHA_KEY  | 否 |    | 哪吒客户端KEY 或v1的NZ_CLIENT_SECRET           |
+ | ARGO_DOMAIN | 否 |    | argo固定隧道域名，留空即启用临时隧道            |
+ | ARGO_AUTH  | 否 |    | argo固定隧道json或token，留空即启用临时隧道         |
+ | CFIP     | 否 |skk.moe | 节点优选域名或ip                     |
+ | CFPORT    | 否 | 8443 |节点端口                         |
+ | HY2_PORT   | 否 |    | hy2端口,支持多端口的玩具可以填写，不填写该节点不通       |
+ | REALITY_PORT | 否 |    | vless-reality端口，支持多端口的玩具可以填写，不填写该节点不通  |
+ | TUIC_PORT  | 否 |    | tuic-v5端口，支持多端口的玩具可以填写，不填写该节点不通     |
 
 ## 游戏机hostong节点输出
 * 输出sub.txt节点文件，可直接导入V2ray，nekbox，小火箭等代理软中
