@@ -11,7 +11,7 @@
 [![PyPI](https://img.shields.io/badge/PyPI-3775A9?logo=pypi&logoColor=white)](https://pypi.org/project/singbox)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?&logo=docker&logoColor=white)](https://hub.docker.com/r/eooce/sbx)
 
-sing-box是一个强大的代理脚本，多种环境下使用。专注于极致轻量与高可用双保险。默认精简剥离了高阻断、高内存消耗的 UDP/QUIC 协议（Hysteria2/Tuic），仅保留 **VLESS-Reality（极速低延迟直连）** 与 **VMess-Argo（全天候备用救砖）** 双协议。同时原生修复 Nginx 订阅 404 Bug、规范节点唯一命名后缀并注入了自动化域名守护服务。
+sing-box是一个强大的代理脚本，多种环境下使用。专注于极致轻量与高可用双保险。默认精简剥离了高阻断、高内存消耗的 UDP/QUIC 协议（Hysteria2/Tuic），仅保留 **VLESS-Reality** 与 **VMess-Argo** 双协议。同时原生修复 Nginx 订阅 404 Bug、规范节点唯一命名后缀并注入了自动化域名守护服务。
 
 ---
 
