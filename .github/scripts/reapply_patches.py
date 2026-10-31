@@ -138,7 +138,30 @@ text = text.replace(old_url_txt, new_url_txt)
 old_change_argo = """    updated_vmess=$(echo "$decoded_vmess" | jq --arg new_domain "$ArgoDomain" '.host = $new_domain | .sni = $new_domain')"""
 new_change_argo = """    updated_vmess=$(echo "$decoded_vmess" | jq --arg new_domain "$ArgoDomain" '.host = $new_domain | .sni = $new_domain | if (.ps | endswith("-Argo") | not) then .ps += "-Argo" else . end')"""
 text = text.replace(old_change_argo, new_change_argo)
-# 7. openrc
+# 7.1 openrc 注入内存锁
+old_openrc_init = """    cat > /etc/init.d/sing-box << 'EOF'
+#!/sbin/openrc-run
+description="sing-box service"
+command="/etc/sing-box/sing-box"
+command_args="run -C /etc/sing-box/conf"
+command_background=true
+pidfile="/var/run/sing-box.pid"
+EOF"""
+
+new_openrc_init = """    cat > /etc/init.d/sing-box << 'EOF'
+#!/sbin/openrc-run
+description="sing-box service"
+export GOMEMLIMIT=48MiB
+export GOGC=30
+command="/etc/sing-box/sing-box"
+command_args="run -C /etc/sing-box/conf"
+command_background=true
+pidfile="/var/run/sing-box.pid"
+EOF"""
+if old_openrc_init in text:
+    text = text.replace(old_openrc_init, new_openrc_init)
+
+# 7.2 openrc
 old_openrc = """    chmod +x /etc/init.d/sing-box
     chmod +x /etc/init.d/argo
     rc-update add sing-box default > /dev/null 2>&1
@@ -176,6 +199,10 @@ SUB_EOF
     cat > /etc/sing-box/argo_daemon.sh << 'DAEMON_EOF'
 #!/bin/sh
 while true; do
+    if ! pgrep -f "/etc/sing-box/sing-box run" >/dev/null 2>&1; then
+        rc-service sing-box stop >/dev/null 2>&1
+        rc-service sing-box start >/dev/null 2>&1
+    fi
     /etc/sing-box/update_argo_sub.sh >/dev/null 2>&1
     sleep 30
 done
@@ -204,7 +231,17 @@ WATCH_EOF
     rc-service argo-watch start      > /dev/null 2>&1 || true
 }"""
 text = text.replace(old_openrc, new_openrc)
-# 8. systemd
+# 8.1 systemd 注入内存锁
+old_systemd_singbox = """ExecStart=/etc/sing-box/sing-box run -C /etc/sing-box/conf
+ExecReload=/bin/kill -HUP \$MAINPID"""
+
+new_systemd_singbox = """Environment="GOMEMLIMIT=48MiB" "GOGC=30"
+ExecStart=/etc/sing-box/sing-box run -C /etc/sing-box/conf
+ExecReload=/bin/kill -HUP \$MAINPID"""
+if old_systemd_singbox in text:
+    text = text.replace(old_systemd_singbox, new_systemd_singbox)
+
+# 8.2 systemd
 old_systemd = """    systemctl daemon-reload
     systemctl enable sing-box
     systemctl start sing-box
@@ -248,7 +285,7 @@ Requires=argo.service
 
 [Service]
 Type=simple
-ExecStart=/bin/sh -c 'while true; do /etc/sing-box/update_argo_sub.sh >/dev/null 2>&1; sleep 30; done'
+ExecStart=/bin/sh -c 'while true; do pgrep -f "/etc/sing-box/sing-box run" >/dev/null 2>&1 || systemctl restart sing-box; /etc/sing-box/update_argo_sub.sh >/dev/null 2>&1; sleep 30; done'
 Restart=always
 RestartSec=5s
 

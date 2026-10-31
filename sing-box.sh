@@ -413,6 +413,7 @@ User=root
 WorkingDirectory=/etc/sing-box
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
 AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
+Environment="GOMEMLIMIT=48MiB" "GOGC=30"
 ExecStart=/etc/sing-box/sing-box run -C /etc/sing-box/conf
 ExecReload=/bin/kill -HUP \$MAINPID
 Restart=on-failure
@@ -485,7 +486,7 @@ Requires=argo.service
 
 [Service]
 Type=simple
-ExecStart=/bin/sh -c 'while true; do /etc/sing-box/update_argo_sub.sh >/dev/null 2>&1; sleep 30; done'
+ExecStart=/bin/sh -c 'while true; do pgrep -f "/etc/sing-box/sing-box run" >/dev/null 2>&1 || systemctl restart sing-box; /etc/sing-box/update_argo_sub.sh >/dev/null 2>&1; sleep 30; done'
 Restart=always
 RestartSec=5s
 
@@ -508,6 +509,8 @@ alpine_openrc_services() {
     cat > /etc/init.d/sing-box << 'EOF'
 #!/sbin/openrc-run
 description="sing-box service"
+export GOMEMLIMIT=48MiB
+export GOGC=30
 command="/etc/sing-box/sing-box"
 command_args="run -C /etc/sing-box/conf"
 command_background=true
@@ -556,6 +559,10 @@ SUB_EOF
     cat > /etc/sing-box/argo_daemon.sh << 'DAEMON_EOF'
 #!/bin/sh
 while true; do
+    if ! pgrep -f "/etc/sing-box/sing-box run" >/dev/null 2>&1; then
+        rc-service sing-box stop >/dev/null 2>&1
+        rc-service sing-box start >/dev/null 2>&1
+    fi
     /etc/sing-box/update_argo_sub.sh >/dev/null 2>&1
     sleep 30
 done
