@@ -11,7 +11,16 @@
 [![PyPI](https://img.shields.io/badge/PyPI-3775A9?logo=pypi&logoColor=white)](https://pypi.org/project/singbox)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?&logo=docker&logoColor=white)](https://hub.docker.com/r/eooce/sbx)
 
-sing-box是一个强大的代理脚本，多种环境下使用。专注于极致轻量与高可用双保险。默认精简剥离了高阻断、高内存消耗的 UDP/QUIC 协议（Hysteria2/Tuic），仅保留 **VLESS-Reality** 与 **VMess-Argo** 双协议。同时原生修复 Nginx 订阅 404 Bug、规范节点唯一命名后缀并注入了自动化域名守护服务。
+sing-box是一个强大的代理脚本，多种环境下使用。专注于极致轻量与高可用双保险。
+
+### 🌟 专属优化特性：
+* **精简双协议**：默认剥离易被墙、高内存消耗的 UDP/QUIC 协议（Hysteria2/Tuic），仅保留 **VLESS-Reality（极速低延迟直连）** 与 **VMess-Argo（全天候备用救砖）** 双协议。
+* **Go 运行时内存硬锁**：原生注入 `GOMEMLIMIT=48MiB` 与 `GOGC=30`，抑制 Go 堆内存无节制膨胀，彻底避免 128MB / 96MB 小内存 VPS 在高并发下载时被宿主机内核 OOM Kill。
+* **进程存活自愈保活**：后台守护服务实时检测 `sing-box` 进程状态，异常退出时自动拉起并清理残余 pid 锁，杜绝假死。
+* **Argo 动态域名自动同步**：临时隧道重启换新随机域名后，后台守护自动捕捉并写入订阅文件，同时死死焊住 `-Argo` 唯一命名。
+* **Nginx 订阅防 404**：修复 Alpine Linux 下使用 alias 导致的解析异常，确保订阅直链 200 OK。
+* **节点唯一命名**：生成订阅自动打上 `-Reality` 与 `-Argo` 独立后缀，彻底解决 Sub-Store / 客户端聚合去重与过滤痛点。
+* **全套开机自启**：`sing-box`、`argo`、`argo-watch`、`nginx` 默认全部固化加入系统开机自启队列。
 
 ---
 
@@ -30,7 +39,7 @@ Telegram交流反馈群组：https://t.me/eooceu
 bash <(curl -Ls https://raw.githubusercontent.com/shadowxhero/Sing-box/main/sing-box.sh)
 ```
 ## vps带端口变量运行示列(NAT机)
-PORT=开放的端口 确保后面有3个端口可用
+PORT=开放的端口 确保后面有1个端口可用(用于Nginx订阅)
 ```
 PORT=你的端口 bash <(curl -Ls https://raw.githubusercontent.com/shadowxhero/Sing-box/main/sing-box.sh)
 ```
