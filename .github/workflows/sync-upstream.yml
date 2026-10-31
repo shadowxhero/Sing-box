@@ -2,8 +2,11 @@ name: Sync Upstream & Re-apply Customizations
 
 on:
   schedule:
-    - cron: '0 20 * * *'
+    - cron: "0 20 * * *"
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   sync-and-patch:
@@ -30,7 +33,7 @@ jobs:
 
       - name: Commit and Push if Changed
         run: |
-          if git status --porcelain | grep -q 'sing-box.sh'; then
+          if git status --porcelain | grep -q "sing-box.sh"; then
             git add sing-box.sh
             git commit -m "chore(sync): 自动同步上游更新并重新应用专属优化"
             git push origin main

@@ -13,13 +13,13 @@ run_cmd("git show upstream/main:sing-box.sh > sing-box.sh")
 with open("sing-box.sh", "r", encoding="utf-8", newline="\n") as f:
     text = f.read()
 
-# 1. 替换快捷指令里的原作者地址为用户的仓库地址
+# 1. Update shortcut
 text = text.replace(
     'https://raw.githubusercontent.com/eooce/sing-box/main/sing-box.sh',
     'https://raw.githubusercontent.com/shadowxhero/Sing-box/main/sing-box.sh'
 )
 
-# 2. 修复 Nginx 订阅 404
+# 2. Nginx 404
 old_nginx = """    location = /$password {
         alias /etc/sing-box/sub.txt;
         default_type 'text/plain; charset=utf-8';
@@ -27,7 +27,6 @@ old_nginx = """    location = /$password {
         add_header Pragma "no-cache";
         add_header Expires "0";
     }"""
-
 new_nginx = """    location = /$password {
         default_type 'text/plain; charset=utf-8';
         root /etc/sing-box;
@@ -36,10 +35,9 @@ new_nginx = """    location = /$password {
         add_header Pragma "no-cache";
         add_header Expires "0";
     }"""
-if old_nginx in text:
-    text = text.replace(old_nginx, new_nginx)
+text = text.replace(old_nginx, new_nginx)
 
-# 3. 剥离 Hysteria2 和 TUIC 端口计算，仅放行必要端口
+# 3. Strip ports
 old_ports = """    nginx_port=$(($vless_port + 1))
     tuic_port=$(($vless_port + 2))
     hy2_port=$(($vless_port + 3))
@@ -50,7 +48,6 @@ old_ports = """    nginx_port=$(($vless_port + 1))
     public_key=$(echo "${output}" | awk '/PublicKey:/ {print $2}')
 
     allow_port $vless_port/tcp $nginx_port/tcp $tuic_port/udp $hy2_port/udp > /dev/null 2>&1"""
-
 new_ports = """    nginx_port=$(($vless_port + 1))
     uuid=$(cat /proc/sys/kernel/random/uuid)
     password=$(< /dev/urandom tr -dc 'A-Za-z0-9' | head -c 24)
@@ -59,10 +56,8 @@ new_ports = """    nginx_port=$(($vless_port + 1))
     public_key=$(echo "${output}" | awk '/PublicKey:/ {print $2}')
 
     allow_port $vless_port/tcp $nginx_port/tcp > /dev/null 2>&1"""
-if old_ports in text:
-    text = text.replace(old_ports, new_ports)
-
-# 4. inbounds.json：仅保留 vless-reality 和 vmess-ws (Argo)
+text = text.replace(old_ports, new_ports)
+# 4. inbounds.json
 old_inbounds = """      "transport": {
         "type": "ws",
         "path": "/vmess-argo",
@@ -112,7 +107,6 @@ old_inbounds = """      "transport": {
   ]
 }
 EOF"""
-
 new_inbounds = """      "transport": {
         "type": "ws",
         "path": "/vmess-argo",
@@ -122,10 +116,8 @@ new_inbounds = """      "transport": {
   ]
 }
 EOF"""
-if old_inbounds in text:
-    text = text.replace(old_inbounds, new_inbounds)
-
-# 5. url.txt 节点输出与唯一命名
+text = text.replace(old_inbounds, new_inbounds)
+# 5. url.txt
 old_url_txt = """    cat > ${work_dir}/url.txt << EOF
 vless://${uuid}@${server_ip}:${vless_port}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.iij.ad.jp&fp=firefox&pbk=${public_key}&type=tcp&headerType=none#${isp}
 
@@ -135,30 +127,24 @@ hysteria2://${uuid}@${server_ip}:${hy2_port}/?sni=www.bing.com&insecure=1&pinSHA
 
 tuic://${uuid}:${uuid}@${server_ip}:${tuic_port}?sni=www.bing.com&congestion_control=bbr&udp_relay_mode=native&alpn=h3&allow_insecure=1#${isp}
 EOF"""
-
 new_url_txt = """    cat > ${work_dir}/url.txt << EOF
 vless://${uuid}@${server_ip}:${vless_port}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.iij.ad.jp&fp=firefox&pbk=${public_key}&type=tcp&headerType=none#${isp}-Reality
 
 vmess://$(echo "$VMESS" | jq -c '.ps = "'"${isp}"'-Argo"' | base64 -w0)
 EOF"""
-if old_url_txt in text:
-    text = text.replace(old_url_txt, new_url_txt)
+text = text.replace(old_url_txt, new_url_txt)
 
-# 6. 优化 change_argo_domain
+# 6. change_argo_domain
 old_change_argo = """    updated_vmess=$(echo "$decoded_vmess" | jq --arg new_domain "$ArgoDomain" '.host = $new_domain | .sni = $new_domain')"""
 new_change_argo = """    updated_vmess=$(echo "$decoded_vmess" | jq --arg new_domain "$ArgoDomain" '.host = $new_domain | .sni = $new_domain | if (.ps | endswith("-Argo") | not) then .ps += "-Argo" else . end')"""
-if old_change_argo in text:
-    text = text.replace(old_change_argo, new_change_argo)
-
-# 7. 注入 argo-watch (openrc)
+text = text.replace(old_change_argo, new_change_argo)
+# 7. openrc
 old_openrc = """    chmod +x /etc/init.d/sing-box
     chmod +x /etc/init.d/argo
     rc-update add sing-box default > /dev/null 2>&1
     rc-update add argo default     > /dev/null 2>&1
 }"""
-
-new_openrc = """    # 注入 argo-watch 自动化域名守护服务
-    cat > /etc/sing-box/update_argo_sub.sh << 'SUB_EOF'
+new_openrc = """    cat > /etc/sing-box/update_argo_sub.sh << 'SUB_EOF'
 #!/bin/sh
 log_file="/etc/sing-box/argo.log"
 url_file="/etc/sing-box/url.txt"
@@ -217,19 +203,15 @@ WATCH_EOF
     rc-update add nginx default      > /dev/null 2>&1
     rc-service argo-watch start      > /dev/null 2>&1 || true
 }"""
-if old_openrc in text:
-    text = text.replace(old_openrc, new_openrc)
-
-# 8. 注入 argo-watch (systemd)
+text = text.replace(old_openrc, new_openrc)
+# 8. systemd
 old_systemd = """    systemctl daemon-reload
     systemctl enable sing-box
     systemctl start sing-box
     systemctl enable argo
     systemctl start argo
 }"""
-
-new_systemd = """    # 注入 argo-watch 自动化域名守护服务 (systemd)
-    cat > /etc/sing-box/update_argo_sub.sh << 'SUB_EOF'
+new_systemd = """    cat > /etc/sing-box/update_argo_sub.sh << 'SUB_EOF'
 #!/bin/sh
 log_file="/etc/sing-box/argo.log"
 url_file="/etc/sing-box/url.txt"
@@ -239,4 +221,53 @@ sub_file="/etc/sing-box/sub.txt"
 [ -f "$url_file" ] || exit 0
 
 new_domain=$(grep -oE 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' "$log_file" | tail -n 1 | sed 's@https://@@')
-[ 
+[ -n "$new_domain" ] || exit 0
+
+vmess_url=$(grep -o 'vmess://[^ ]*' "$url_file")
+[ -n "$vmess_url" ] || exit 0
+
+encoded_vmess="${vmess_url#vmess://}"
+decoded_vmess=$(echo "$encoded_vmess" | base64 -d 2>/dev/null)
+current_domain=$(echo "$decoded_vmess" | jq -r '.host // empty')
+
+if [ "$new_domain" != "$current_domain" ]; then
+    updated_vmess=$(echo "$decoded_vmess" | jq --arg d "$new_domain" '.host = $d | .sni = $d | if (.ps | endswith("-Argo") | not) then .ps += "-Argo" else . end')
+    encoded_updated_vmess=$(echo "$updated_vmess" | base64 | tr -d '\r\n')
+    sed -i "s|$vmess_url|vmess://${encoded_updated_vmess}|" "$url_file"
+    base64 -w0 "$url_file" > "$sub_file"
+    chmod 644 "$sub_file"
+fi
+SUB_EOF
+    chmod +x /etc/sing-box/update_argo_sub.sh
+
+    cat > /etc/systemd/system/argo-watch.service << 'WATCH_EOF'
+[Unit]
+Description=Auto sync Argo domain to subscription
+After=argo.service
+Requires=argo.service
+
+[Service]
+Type=simple
+ExecStart=/bin/sh -c 'while true; do /etc/sing-box/update_argo_sub.sh >/dev/null 2>&1; sleep 30; done'
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
+WATCH_EOF
+
+    systemctl daemon-reload
+    systemctl enable sing-box
+    systemctl start sing-box
+    systemctl enable argo
+    systemctl start argo
+    systemctl enable argo-watch >/dev/null 2>&1 || true
+    systemctl start argo-watch  >/dev/null 2>&1 || true
+    systemctl enable nginx      >/dev/null 2>&1 || true
+}"""
+text = text.replace(old_systemd, new_systemd)
+
+with open("sing-box.sh", "w", encoding="utf-8", newline="\n") as f:
+    f.write(text)
+
+print("Patching completed successfully!")

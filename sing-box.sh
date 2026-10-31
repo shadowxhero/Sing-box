@@ -1,10 +1,9 @@
 #!/bin/bash
 
 # =========================
-# sing-box 双协议精简优化版
-# vless-reality-vision | vmess-ws-argo
-# 优化说明：精简剥离易被墙、吃内存的 UDP/QUIC (Hy2/Tuic) 协议；
-# 修复 Nginx 订阅 404；规范节点唯一命名后缀；注入 argo-watch 自动化守护
+# 老王sing-box四合一安装脚本
+# vless-version-reality|vmess-ws-tls(tunnel)|hysteria2|tuic5|[可额外添加Anytls，socks5，ss2022等协议] 
+# 最后更新时间: 2026.6.7[添加hy2证书, 添加ipv4和ipv6切换]
 # =========================
 
 export LANG=en_US.UTF-8
@@ -448,7 +447,6 @@ EOF
         yum update -y ca-certificates
         bash -c 'echo "0 0" > /proc/sys/net/ipv4/ping_group_range'
     fi
-    # 注入 argo-watch 自动化域名守护服务 (systemd)
     cat > /etc/sing-box/update_argo_sub.sh << 'SUB_EOF'
 #!/bin/sh
 log_file="/etc/sing-box/argo.log"
@@ -525,7 +523,6 @@ command_background=true
 pidfile="/var/run/argo.pid"
 EOF
 
-    # 注入 argo-watch 自动化域名守护服务
     cat > /etc/sing-box/update_argo_sub.sh << 'SUB_EOF'
 #!/bin/sh
 log_file="/etc/sing-box/argo.log"
