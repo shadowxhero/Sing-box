@@ -138,6 +138,33 @@ text = text.replace(old_url_txt, new_url_txt)
 old_change_argo = """    updated_vmess=$(echo "$decoded_vmess" | jq --arg new_domain "$ArgoDomain" '.host = $new_domain | .sni = $new_domain')"""
 new_change_argo = """    updated_vmess=$(echo "$decoded_vmess" | jq --arg new_domain "$ArgoDomain" '.host = $new_domain | .sni = $new_domain | if (.ps | endswith("-Argo") | not) then .ps += "-Argo" else . end')"""
 text = text.replace(old_change_argo, new_change_argo)
+# 7.4 openrc argo 内存锁
+old_openrc_argo = """    cat > /etc/init.d/argo << 'EOF'
+#!/sbin/openrc-run
+description="Cloudflare Tunnel"
+command="/bin/sh"
+command_args="-c '/etc/sing-box/argo tunnel --url http://localhost:8001 --no-autoupdate --edge-ip-version auto --protocol http2 > /etc/sing-box/argo.log 2>&1'"
+command_background=true
+pidfile="/var/run/argo.pid"
+EOF"""
+
+new_openrc_argo = """    cat > /etc/init.d/argo << 'EOF'
+#!/sbin/openrc-run
+description="Cloudflare Tunnel"
+export GOMEMLIMIT=30MiB
+export GOGC=25
+command="/bin/sh"
+command_args="-c 'exec /etc/sing-box/argo tunnel --url http://localhost:8001 --no-autoupdate --edge-ip-version auto --protocol http2 > /etc/sing-box/argo.log 2>&1'"
+command_background=true
+pidfile="/var/run/argo.pid"
+
+start_pre() {
+    rm -f /var/run/argo.pid /run/argo.pid
+}
+EOF"""
+if old_openrc_argo in text:
+    text = text.replace(old_openrc_argo, new_openrc_argo)
+
 # 7.1 openrc 注入内存锁
 old_openrc_init = """    cat > /etc/init.d/sing-box << 'EOF'
 #!/sbin/openrc-run
@@ -203,6 +230,11 @@ while true; do
         rc-service sing-box stop >/dev/null 2>&1
         rc-service sing-box start >/dev/null 2>&1
     fi
+    if ! pgrep -f "/etc/sing-box/argo tunnel" >/dev/null 2>&1; then
+        rc-service argo stop >/dev/null 2>&1
+        rc-service argo start >/dev/null 2>&1
+        sleep 5
+    fi
     /etc/sing-box/update_argo_sub.sh >/dev/null 2>&1
     sleep 30
 done
@@ -217,7 +249,7 @@ command_background=true
 pidfile="/var/run/argo-watch.pid"
 
 depend() {
-    need argo
+    after argo sing-box
 }
 WATCH_EOF
     chmod +x /etc/init.d/argo-watch
@@ -231,6 +263,26 @@ WATCH_EOF
     rc-service argo-watch start      > /dev/null 2>&1 || true
 }"""
 text = text.replace(old_openrc, new_openrc)
+# 7.3 systemd argo 内存锁
+old_systemd_argo = """[Service]
+Type=simple
+NoNewPrivileges=yes
+TimeoutStartSec=0
+ExecStart=/bin/sh -c "/etc/sing-box/argo tunnel --url http://localhost:8001 --no-autoupdate --edge-ip-version auto --protocol http2 > /etc/sing-box/argo.log 2>&1"
+Restart=on-failure
+RestartSec=5s"""
+
+new_systemd_argo = """[Service]
+Type=simple
+NoNewPrivileges=yes
+TimeoutStartSec=0
+Environment="GOMEMLIMIT=30MiB" "GOGC=25"
+ExecStart=/bin/sh -c "/etc/sing-box/argo tunnel --url http://localhost:8001 --no-autoupdate --edge-ip-version auto --protocol http2 > /etc/sing-box/argo.log 2>&1"
+Restart=on-failure
+RestartSec=5s"""
+if old_systemd_argo in text:
+    text = text.replace(old_systemd_argo, new_systemd_argo)
+
 # 8.1 systemd 注入内存锁
 old_systemd_singbox = """ExecStart=/etc/sing-box/sing-box run -C /etc/sing-box/conf
 ExecReload=/bin/kill -HUP \$MAINPID"""
@@ -279,13 +331,12 @@ SUB_EOF
 
     cat > /etc/systemd/system/argo-watch.service << 'WATCH_EOF'
 [Unit]
-Description=Auto sync Argo domain to subscription
-After=argo.service
-Requires=argo.service
+Description=Auto sync Argo domain to subscription & keep services alive
+After=argo.service sing-box.service
 
 [Service]
 Type=simple
-ExecStart=/bin/sh -c 'while true; do pgrep -f "/etc/sing-box/sing-box run" >/dev/null 2>&1 || systemctl restart sing-box; /etc/sing-box/update_argo_sub.sh >/dev/null 2>&1; sleep 30; done'
+ExecStart=/bin/sh -c 'while true; do pgrep -f "/etc/sing-box/sing-box run" >/dev/null 2>&1 || systemctl restart sing-box; pgrep -f "/etc/sing-box/argo tunnel" >/dev/null 2>&1 || systemctl restart argo; /etc/sing-box/update_argo_sub.sh >/dev/null 2>&1; sleep 30; done'
 Restart=always
 RestartSec=5s
 
