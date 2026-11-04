@@ -1243,7 +1243,7 @@ disable_open_sub() {
         3)
             reading "请输入新的订阅端口(1-65535,直接回车随机生成):" sub_port
             [ -z "$sub_port" ] && sub_port=$(shuf -i 2000-65000 -n 1)
-            until [[ -z $(lsof -iTCP:"$sub_port" -sTCP:LISTEN -t) ]]; do
+            until ! (ss -tln 2>/dev/null | grep -q -E ":${sub_port}[[:space:]]" || (command -v netstat &>/dev/null && netstat -tln 2>/dev/null | grep -q -E ":${sub_port}[[:space:]]")); do
                 echo -e "${red}端口 $sub_port 已被占用${re}"
                 reading "请输入新的订阅端口(1-65535):" sub_port
                 [[ -z $sub_port ]] && sub_port=$(shuf -i 2000-65000 -n 1)

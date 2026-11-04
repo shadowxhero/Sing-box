@@ -355,6 +355,12 @@ WATCH_EOF
 }"""
 text = text.replace(old_systemd, new_systemd)
 
+# 9. 修复更换订阅端口时在 Alpine (BusyBox lsof) 下的误报死循环
+old_check_port = """            until [[ -z $(lsof -iTCP:"$sub_port" -sTCP:LISTEN -t) ]]; do"""
+new_check_port = """            until ! (ss -tln 2>/dev/null | grep -q -E ":${sub_port}[[:space:]]" || (command -v netstat &>/dev/null && netstat -tln 2>/dev/null | grep -q -E ":${sub_port}[[:space:]]")); do"""
+if old_check_port in text:
+    text = text.replace(old_check_port, new_check_port)
+
 with open("sing-box.sh", "w", encoding="utf-8", newline="\n") as f:
     f.write(text)
 
