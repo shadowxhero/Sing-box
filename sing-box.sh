@@ -970,7 +970,7 @@ change_config() {
             skyblue "------------"
             green "2. 修改hysteria2端口"
             skyblue "------------"
-            green "3. 修改tuic端口"
+            green "3. 修改anytls端口"
             skyblue "------------"
             green "4. 修改vmess-argo端口"
             skyblue "------------"
@@ -1006,17 +1006,21 @@ change_config() {
                     green "\nhysteria2端口已修改为：${purple}${new_port}${re}\n"
                     ;;
                 3)
-                    reading "\n请输入tuic端口 (回车跳过将使用随机端口): " new_port
+                    reading "\n请输入anytls端口 (回车跳过将使用随机端口): " new_port
                     [ -z "$new_port" ] && new_port=$(shuf -i 2000-65000 -n 1)
-                    jq --arg port "$new_port" \
-                       '(.inbounds[] | select(.type == "tuic").listen_port) = ($port | tonumber)' \
-                       "$inbounds_file" > "${inbounds_file}.tmp" && mv "${inbounds_file}.tmp" "$inbounds_file"
-                    restart_singbox
-                    allow_port $new_port/udp > /dev/null 2>&1
-                    sed -i 's/\(tuic:\/\/[^@]*@[^:]*:\)[0-9]\{1,\}/\1'"$new_port"'/' $client_dir
-                    base64 -w0 $client_dir > /etc/sing-box/sub.txt
-                    while IFS= read -r line; do yellow "$line"; done < ${work_dir}/url.txt
-                    green "\ntuic端口已修改为：${purple}${new_port}${re}\n"
+                    if ! jq -e '.inbounds[] | select(.type == "anytls")' "$inbounds_file" > /dev/null 2>&1; then
+                        yellow "AnyTLS 尚未添加，请先在协议管理菜单中添加。"; sleep 2
+                    else
+                        jq --arg port "$new_port" \
+                           '(.inbounds[] | select(.type == "anytls").listen_port) = ($port | tonumber)' \
+                           "$inbounds_file" > "${inbounds_file}.tmp" && mv "${inbounds_file}.tmp" "$inbounds_file"
+                        restart_singbox
+                        allow_port $new_port/tcp > /dev/null 2>&1
+                        sed -i -E 's#^(anytls://[^@]*@(\[[0-9a-fA-F:]+\]|[^:/]+)):[0-9]+#\1:'"$new_port"'#' $client_dir
+                        base64 -w0 $client_dir > /etc/sing-box/sub.txt
+                        while IFS= read -r line; do yellow "$line"; done < ${work_dir}/url.txt
+                        green "\nanytls端口已修改为：${purple}${new_port}${re}\n"
+                    fi
                     ;;
                 4)
                     reading "\n请输入vmess-argo端口 (回车跳过将使用随机端口): " new_port

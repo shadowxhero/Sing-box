@@ -368,6 +368,55 @@ if old_extra_filter not in text:
     sys.exit("订阅额外节点过滤锚点未找到，上游可能已改动")
 text = text.replace(old_extra_filter, new_extra_filter)
 
+# 10.1 修改端口菜单：去掉已不再安装的 TUIC，改为修改菜单添加的 AnyTLS
+old_port_menu = """            green \"2. 修改hysteria2端口\"
+            skyblue \"------------\"
+            green \"3. 修改tuic端口\"
+            skyblue \"------------\"
+            green \"4. 修改vmess-argo端口\""""
+new_port_menu = """            green \"2. 修改hysteria2端口\"
+            skyblue \"------------\"
+            green \"3. 修改anytls端口\"
+            skyblue \"------------\"
+            green \"4. 修改vmess-argo端口\""""
+if old_port_menu not in text:
+    sys.exit("修改端口菜单锚点未找到，上游可能已改动")
+text = text.replace(old_port_menu, new_port_menu)
+
+old_tuic_case = """                3)
+                    reading \"\\n请输入tuic端口 (回车跳过将使用随机端口): \" new_port
+                    [ -z \"$new_port\" ] && new_port=$(shuf -i 2000-65000 -n 1)
+                    jq --arg port \"$new_port\" \\
+                       '(.inbounds[] | select(.type == \"tuic\").listen_port) = ($port | tonumber)' \\
+                       \"$inbounds_file\" > \"${inbounds_file}.tmp\" && mv \"${inbounds_file}.tmp\" \"$inbounds_file\"
+                    restart_singbox
+                    allow_port $new_port/udp > /dev/null 2>&1
+                    sed -i 's/\\(tuic:\\/\\/[^@]*@[^:]*:\\)[0-9]\\{1,\\}/\\1'\"$new_port\"'/' $client_dir
+                    base64 -w0 $client_dir > /etc/sing-box/sub.txt
+                    while IFS= read -r line; do yellow \"$line\"; done < ${work_dir}/url.txt
+                    green \"\\ntuic端口已修改为：${purple}${new_port}${re}\\n\"
+                    ;;"""
+new_anytls_case = """                3)
+                    reading \"\\n请输入anytls端口 (回车跳过将使用随机端口): \" new_port
+                    [ -z \"$new_port\" ] && new_port=$(shuf -i 2000-65000 -n 1)
+                    if ! jq -e '.inbounds[] | select(.type == \"anytls\")' \"$inbounds_file\" > /dev/null 2>&1; then
+                        yellow \"AnyTLS 尚未添加，请先在协议管理菜单中添加。\"; sleep 2
+                    else
+                        jq --arg port \"$new_port\" \\
+                           '(.inbounds[] | select(.type == \"anytls\").listen_port) = ($port | tonumber)' \\
+                           \"$inbounds_file\" > \"${inbounds_file}.tmp\" && mv \"${inbounds_file}.tmp\" \"$inbounds_file\"
+                        restart_singbox
+                        allow_port $new_port/tcp > /dev/null 2>&1
+                        sed -i -E 's#^(anytls://[^@]*@(\\[[0-9a-fA-F:]+\\]|[^:/]+)):[0-9]+#\\1:'\"$new_port\"'#' $client_dir
+                        base64 -w0 $client_dir > /etc/sing-box/sub.txt
+                        while IFS= read -r line; do yellow \"$line\"; done < ${work_dir}/url.txt
+                        green \"\\nanytls端口已修改为：${purple}${new_port}${re}\\n\"
+                    fi
+                    ;;"""
+if old_tuic_case not in text:
+    sys.exit("TUIC 端口修改分支锚点未找到，上游可能已改动")
+text = text.replace(old_tuic_case, new_anytls_case)
+
 # 11. 协议管理菜单补回 Hysteria2（默认安装已剥离，改由菜单按需添加）
 old_proto_menu = """    green "--- Shadowsocks-2022 协议 ---"
     green "5. 添加 Shadowsocks-2022 协议"
