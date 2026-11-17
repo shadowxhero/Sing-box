@@ -633,7 +633,7 @@ get_info() {
 
     extra_lines=""
     if [ -f "${client_dir}" ]; then
-        extra_lines=$(grep -vE '^(vless://|vmess://|hysteria2://|tuic://)' "${client_dir}" || true)
+        extra_lines=$(grep -vE '^(vless://|vmess://|tuic://)' "${client_dir}" || true)
     fi
 
     cat > ${work_dir}/url.txt << EOF
@@ -2201,6 +2201,108 @@ remove_ss2022() {
     green "\nShadowsocks-2022 协议已删除\n"
 }
 
+# ---- Hysteria2 ----
+add_hysteria2() {
+    local inbounds_file="${conf_dir}/inbounds.json"
+    local tag="hysteria2"
+
+    if proto_exists "$tag"; then
+        yellow "Hysteria2 协议已存在，无需重复添加。"; sleep 1; return
+    fi
+
+    local current_uuid
+    current_uuid=$(get_current_uuid)
+    if [ -z "$current_uuid" ]; then
+        red "无法获取当前UUID，请确认 sing-box 已正确安装并配置。"; sleep 2; return
+    fi
+
+    if [ ! -f "${work_dir}/cert.pem" ] || [ ! -f "${work_dir}/private.key" ]; then
+        openssl ecparam -genkey -name prime256v1 -out "${work_dir}/private.key"
+        openssl req -new -x509 -days 3650 -key "${work_dir}/private.key" -out "${work_dir}/cert.pem" -subj "/CN=bing.com"
+    fi
+    local fingerprint
+    fingerprint=$(openssl x509 -noout -fingerprint -sha256 -in "${work_dir}/cert.pem" | cut -d'=' -f2 | sed 's/:/%3A/g')
+
+    while true; do
+        reading "请输入 Hysteria2 监听端口 (回车随机生成): " hy_port
+        if [ -z "$hy_port" ]; then
+            hy_port=$(shuf -i 10000-65000 -n 1)
+            green "Hysteria2监听端口：${purple}${hy_port}${re}"
+            break
+        fi
+        if [[ ! "$hy_port" =~ ^[0-9]+$ ]] || [ "$hy_port" -gt 65535 ] || [ "$hy_port" -lt 1 ]; then
+            yellow "错误：端口必须是1-65535之间的数字！"
+            continue
+        fi
+        green "Hysteria2监听端口：${purple}${hy_port}${re}"
+        break
+    done
+
+    jq --arg tag "$tag" \
+       --argjson port "$hy_port" \
+       --arg pass "$current_uuid" \
+       --arg cert "${work_dir}/cert.pem" \
+       --arg key "${work_dir}/private.key" \
+       '.inbounds += [{
+           "type": "hysteria2",
+           "tag": $tag,
+           "listen": "::",
+           "listen_port": $port,
+           "users": [{"password": $pass}],
+           "ignore_client_bandwidth": false,
+           "masquerade": "https://bing.com",
+           "tls": {
+               "enabled": true,
+               "alpn": ["h3"],
+               "min_version": "1.3",
+               "max_version": "1.3",
+               "certificate_path": $cert,
+               "key_path": $key
+           }
+       }]' "$inbounds_file" > "${inbounds_file}.tmp" && mv "${inbounds_file}.tmp" "$inbounds_file"
+
+    allow_port ${hy_port}/udp > /dev/null 2>&1
+
+    local server_ip
+    server_ip=$(get_realip)
+    local isp
+    isp=$(curl -sm 3 -H "User-Agent: Mozilla/5.0" "https://api.ip.sb/geoip" | tr -d '\n' \
+        | awk -F\" '{c="";i="";for(x=1;x<=NF;x++){if($x=="country_code")c=$(x+2);if($x=="isp")i=$(x+2)};if(c&&i)print c"-"i}' \
+        | sed 's/ /_/g' || echo "Hy2")
+
+    local url_line="hysteria2://${current_uuid}@${server_ip}:${hy_port}/?sni=www.bing.com&insecure=1&pinSHA256=${fingerprint}&alpn=h3&obfs=none#${isp}-Hy2"
+
+    echo "" >> "${client_dir}"
+    echo "${url_line}" >> "${client_dir}"
+    update_sub
+
+    restart_singbox
+
+    green "\nHysteria2 协议已添加！"
+    green "密码(UUID): ${purple}${current_uuid}${re}"
+    green "端口: ${purple}${hy_port}${re}/udp"
+    green "节点链接:\n${purple}${url_line}${re}\n"
+    yellow "如果节点不通，请在客户端将 \"跳过证书验证\" 设置为 true 或切换内核"
+    [ -x "${work_dir}/qrencode" ] && "${work_dir}/qrencode" "$url_line"
+}
+
+remove_hysteria2() {
+    local inbounds_file="${conf_dir}/inbounds.json"
+    local tag="hysteria2"
+
+    if ! proto_exists "$tag"; then
+        yellow "Hysteria2 协议未添加，无需删除。"; sleep 1; return
+    fi
+
+    jq --arg tag "$tag" 'del(.inbounds[] | select(.tag == $tag))' \
+        "$inbounds_file" > "${inbounds_file}.tmp" && mv "${inbounds_file}.tmp" "$inbounds_file"
+
+    remove_url_by_tag "hysteria2"
+    update_sub
+    restart_singbox
+    green "\nHysteria2 协议已删除\n"
+}
+
 # 显示当前已启用的额外协议状态
 show_extra_proto_status() {
     local inbounds_file="${conf_dir}/inbounds.json"
@@ -2237,6 +2339,15 @@ show_extra_proto_status() {
     else
         echo -e " Shadowsocks-2022: ${yellow}未启用${re}"
     fi
+
+    # Hysteria2
+    if jq -e '.inbounds[] | select(.tag == "hysteria2")' "$inbounds_file" > /dev/null 2>&1; then
+        local hy_port
+        hy_port=$(jq -r '.inbounds[] | select(.tag == "hysteria2") | .listen_port' "$inbounds_file")
+        echo -e " Hysteria2:        ${green}已启用${re} (端口: ${skyblue}${hy_port}${re}/udp)"
+    else
+        echo -e " Hysteria2:        ${yellow}未启用${re}"
+    fi
     echo ""
 }
 
@@ -2263,6 +2374,10 @@ manage_protocols() {
     green "5. 添加 Shadowsocks-2022 协议"
     red   "6. 删除 Shadowsocks-2022 协议"
     skyblue "-----------------------------"
+    green "--- Hysteria2 协议 ---"
+    green "7. 添加 Hysteria2 协议"
+    red   "8. 删除 Hysteria2 协议"
+    skyblue "-----------------------------"
     purple "0. 返回主菜单"
     skyblue "-----------------------------"
     reading "请输入选择: " proto_choice
@@ -2274,6 +2389,8 @@ manage_protocols() {
         4) remove_anytls ;;
         5) add_ss2022 ;;
         6) remove_ss2022 ;;
+        7) add_hysteria2 ;;
+        8) remove_hysteria2 ;;
         0) menu; return ;;
         *) red "无效的选项！" ;;
     esac
