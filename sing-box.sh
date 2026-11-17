@@ -3,7 +3,7 @@
 # =========================
 # 老王sing-box四合一安装脚本
 # vless-version-reality|vmess-ws-tls(tunnel)|hysteria2|tuic5|[可额外添加Anytls，socks5，ss2022等协议] 
-# 最后更新时间: 2026.6.7[添加hy2证书, 添加ipv4和ipv6切换]
+# 最后更新时间: 2026.11.18[卸载时停止 argo-watch，清掉残留守护进程和定时任务]
 # =========================
 
 export LANG=en_US.UTF-8
@@ -811,12 +811,48 @@ restart_argo()   { manage_service "argo" "restart"; }
 start_nginx()    { manage_service "nginx" "start"; }
 restart_nginx()  { manage_service "nginx" "restart"; }
 
+# 停止域名守护。只删文件不够：进程已经打开的脚本被删除后仍会继续执行。
+kill_script_process() {
+    command_exists pgrep || return 0
+    local pid
+    for pid in $(pgrep -f "$1" || true); do
+        [ "$pid" = "$$" ] || [ "$pid" = "$PPID" ] && continue
+        kill "$pid" >/dev/null 2>&1 || true
+    done
+}
+
+stop_argo_watch() {
+    if command_exists rc-service; then
+        rc-service argo-watch stop >/dev/null 2>&1 || true
+        rc-update del argo-watch default >/dev/null 2>&1 || true
+    fi
+    if command_exists systemctl; then
+        systemctl stop argo-watch >/dev/null 2>&1 || true
+        systemctl disable argo-watch >/dev/null 2>&1 || true
+        rm -f /etc/systemd/system/argo-watch.service
+        systemctl daemon-reload >/dev/null 2>&1 || true
+    fi
+    rm -f /etc/init.d/argo-watch /var/run/argo-watch.pid /run/argo-watch.pid
+
+    kill_script_process '/etc/sing-box/argo_daemon\.sh'
+    kill_script_process '/etc/sing-box/update_argo_sub\.sh'
+
+    if command_exists crontab; then
+        local cron
+        cron=$(crontab -l 2>/dev/null) || true
+        if printf '%s\n' "$cron" | grep -q '/etc/sing-box/update_argo_sub.sh'; then
+            printf '%s\n' "$cron" | grep -v '/etc/sing-box/update_argo_sub.sh' | crontab - >/dev/null 2>&1 || true
+        fi
+    fi
+}
+
 # 卸载 sing-box（交互式）
 uninstall_singbox() {
     reading "确定要卸载 sing-box 吗? (y/n): " choice
     case "${choice}" in
         y|Y)
             yellow "正在卸载 sing-box"
+            stop_argo_watch
             if command_exists rc-service; then
                 rc-service sing-box stop; rc-service argo stop
                 rm -f /etc/init.d/sing-box /etc/init.d/argo
@@ -827,6 +863,7 @@ uninstall_singbox() {
                 systemctl daemon-reload || true
             fi
             rm -rf "${work_dir}" || true
+            rm -f /usr/bin/sb
             rm -f /etc/systemd/system/sing-box.service /etc/systemd/system/argo.service
             rm -f /etc/nginx/conf.d/sing-box.conf
 
@@ -893,6 +930,7 @@ auto_install() {
 # 无交互静默卸载（-u 参数），含 nginx
 auto_uninstall() {
     green "开始无交互式卸载sing-box..."
+    stop_argo_watch
 
     if command_exists rc-service; then
         rc-service sing-box stop  > /dev/null 2>&1
