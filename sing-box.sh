@@ -3,7 +3,7 @@
 # =========================
 # 老王sing-box四合一安装脚本
 # vless-version-reality|vmess-ws-tls(tunnel)|hysteria2|tuic5|[可额外添加Anytls，socks5，ss2022等协议] 
-# 最后更新时间: 2026.6.7[添加hy2证书, 添加ipv4和ipv6切换]
+# 最后更新时间: 2026.11.25[卸载时一并清理 nginx 备份配置(sing-box.conf.bak.sb / .bak.YYYYMMDD)]
 # =========================
 
 export LANG=en_US.UTF-8
@@ -828,7 +828,9 @@ uninstall_singbox() {
             fi
             rm -rf "${work_dir}" || true
             rm -f /etc/systemd/system/sing-box.service /etc/systemd/system/argo.service
-            rm -f /etc/nginx/conf.d/sing-box.conf
+            # 脚本自己产生的备份（安装时的 .bak.sb、改端口时的 .bak.YYYYMMDD）一起清掉，
+            # 否则卸载后 conf.d 里会留下指向已删除目录的残留配置。
+            rm -f /etc/nginx/conf.d/sing-box.conf /etc/nginx/conf.d/sing-box.conf.bak.*
 
             reading "\n是否卸载 Nginx？${green}(卸载请输入 ${yellow}y${re} ${green}回车将跳过卸载Nginx) (y/n): ${re}" choice
             case "${choice}" in
@@ -921,7 +923,7 @@ auto_uninstall() {
             systemctl stop    nginx > /dev/null 2>&1
             systemctl disable nginx > /dev/null 2>&1
         fi
-        rm -f /etc/nginx/conf.d/sing-box.conf
+        rm -f /etc/nginx/conf.d/sing-box.conf /etc/nginx/conf.d/sing-box.conf.bak.*
         manage_packages uninstall nginx
         [ -f /etc/nginx/nginx.conf.bak.sb ] && \
             mv /etc/nginx/nginx.conf.bak.sb /etc/nginx/nginx.conf > /dev/null 2>&1
