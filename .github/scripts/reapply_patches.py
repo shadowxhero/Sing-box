@@ -595,6 +595,73 @@ if old_remove_ss not in text:
     sys.exit("Shadowsocks 删除函数锚点未找到，上游可能已改动")
 text = text.replace(old_remove_ss, new_remove_ss)
 
+# 12. 卸载时清理 argo-watch：上游只创建该服务，卸载路径从不停止它，
+#     导致卸载后 /etc/init.d/argo-watch、开机自启和守护进程全部残留。
+old_uninstall = '''uninstall_singbox() {
+    reading "确定要卸载 sing-box 吗? (y/n): " choice
+    case "${choice}" in
+        y|Y)
+            yellow "正在卸载 sing-box"'''
+new_uninstall = '''# 停止域名守护。只删文件不够：进程已打开的脚本被删除后仍会继续执行。
+kill_script_process() {
+    command -v pgrep >/dev/null 2>&1 || return 0
+    local pid
+    for pid in $(pgrep -f "$1" || true); do
+        [ "$pid" = "$$" ] || [ "$pid" = "$PPID" ] && continue
+        kill "$pid" >/dev/null 2>&1 || true
+    done
+}
+
+# 卸载时清理 argo-watch：上游只创建该服务，卸载路径从不停止它。
+stop_argo_watch() {
+    if command -v rc-service >/dev/null 2>&1; then
+        rc-service argo-watch stop >/dev/null 2>&1 || true
+        rc-update del argo-watch default >/dev/null 2>&1 || true
+    fi
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl stop argo-watch >/dev/null 2>&1 || true
+        systemctl disable argo-watch >/dev/null 2>&1 || true
+        rm -f /etc/systemd/system/argo-watch.service
+        systemctl daemon-reload >/dev/null 2>&1 || true
+    fi
+    rm -f /etc/init.d/argo-watch /var/run/argo-watch.pid /run/argo-watch.pid
+    kill_script_process '/etc/sing-box/argo_daemon\\.sh'
+    kill_script_process '/etc/sing-box/update_argo_sub\\.sh'
+    if command -v crontab >/dev/null 2>&1; then
+        local cron
+        cron=$(crontab -l 2>/dev/null) || true
+        if printf '%s\\n' "$cron" | grep -q '/etc/sing-box/update_argo_sub.sh'; then
+            printf '%s\\n' "$cron" | grep -v '/etc/sing-box/update_argo_sub.sh' | crontab - >/dev/null 2>&1 || true
+        fi
+    fi
+}
+
+uninstall_singbox() {
+    reading "确定要卸载 sing-box 吗? (y/n): " choice
+    case "${choice}" in
+        y|Y)
+            yellow "正在卸载 sing-box"
+            stop_argo_watch'''
+if old_uninstall not in text:
+    sys.exit("卸载函数锚点未找到，上游可能已改动")
+text = text.replace(old_uninstall, new_uninstall)
+
+# 13. 无交互卸载（-u）同样要清理 argo-watch
+old_auto_uninstall = '''auto_uninstall() {
+    green "开始无交互式卸载sing-box..."'''
+new_auto_uninstall = '''auto_uninstall() {
+    green "开始无交互式卸载sing-box..."
+    stop_argo_watch'''
+if old_auto_uninstall not in text:
+    sys.exit("无交互卸载锚点未找到，上游可能已改动")
+text = text.replace(old_auto_uninstall, new_auto_uninstall)
+
+# 14. 卸载时连带清理脚本自己产生的 nginx 备份配置
+text = text.replace(
+    'rm -f /etc/nginx/conf.d/sing-box.conf\n',
+    'rm -f /etc/nginx/conf.d/sing-box.conf /etc/nginx/conf.d/sing-box.conf.bak.*\n'
+)
+
 with open("sing-box.sh", "w", encoding="utf-8", newline="\n") as f:
     f.write(text)
 
